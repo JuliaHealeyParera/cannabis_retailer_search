@@ -14,7 +14,7 @@ nc_county_sf = nc_county_sf |> st_transform("wgs84")
 nc_county_sf |> st_geometry() |> plot()
 
 # Test search ####
-api_key = read_csv("code/mike_place_api_key.csv") |> filter(name == "places") |> pull(key)
+api_key = read_csv("ignore/credentials/mike_place_api_key.csv") |> filter(name == "places") |> pull(key)
 # TODO demo 1 search
 
 # Read tobacco table ####
@@ -126,9 +126,5 @@ ggsave("process/MDF scratchpad process/UNC zoom - tobacco and alcohol retailers,
 
 
 # Spatial buffer ####
-hold = alcohol_sf |> st_intersection(tobacco_sf)
-hold
-
-hold
-
-
+# hold = alcohol_sf |> st_intersection(tobacco_sf) # need to buffer. 
+# TODO Should really transform to more user friendly CRS, state plane

@@ -1,0 +1,21 @@
+"","name_alc","name_tob","idx_alc","idx_tob","street_address_alc","street_address_tob","geom_alc","geom_tob","distance"
+"comb_df",98 tobacco shop,98 tobacco shop,3,147,2627 Holloway Street,2627 HOLLOWAY STREET,c(-78.852386, 35.989228),c(-78.852389, 35.989234),0.719701091216545
+"match",big apple food mart,big apple food mart,23,3,1505 Holloway Street,1505 HOLLOWAY STREET,c(-78.87469, 35.994329),c(-78.874692, 35.994336),0.798891806351528
+"match",bilboa food mart,bilboa food mart,24,4,3639 Angier Avenue,3639 ANGIER AVENUE,c(-78.851888, 35.956644),c(-78.851889, 35.956652),0.894102846838806
+"match",buy quick food mart,buy quick food mart,41,10,419 South Briggs Avenue,419 SOUTH BRIGGS AVENUE,c(-78.874761, 35.981085),c(-78.874768, 35.981089),0.771074469101582
+"match",cheek road mini mart,1907 cheek rd mini mart,52,1,1907 Cheek Road,1907 CHEEK ROAD,c(-78.866568, 36.0054),c(-78.866589, 36.005403),1.91823218611211
+"match",cruizers 32,refuel / exxon,72,74,3446 Hillsborough Road,3446 Hillsborough Rd,c(-78.94776, 36.020324),c(-78.947763, 36.020331),0.823801417450563
+"match",dollar general store 8941,dollar general,87,104,800 Broad Street,800 BROAD STREET,c(-78.919196, 36.0104029),c(-78.919199, 36.01041),0.834326578487157
+"match",family food mart,family food mart,110,38,1203 Morning Glory Avenue,1203 MORNING GLORY AVENUE,c(-78.886959, 35.988465),c(-78.886953, 35.988468),0.634584094619611
+"match",freeway b p 120,family fare,126,31,308 South Alston Avenue,308 SOUTH ALSTON AVENUE,c(-78.890137, 35.9837289),c(-78.890129, 35.983739),1.33395115075609
+"match",han dee hugos 77,han dee hugos 77,140,48,1203 West Club Blvd,1203 WEST CLUB BLVD,c(-78.912238, 36.016588),c(-78.912241, 36.016597),1.03649162692307
+"match",joy mart,family fare,160,29,2109 North Roxboro Road,2211 ROXBORO ROAD,c(-78.89009, 36.01773),c(-78.890135, 36.018632),100.37960424229
+"match",kangaroo express 3161,circle k,165,13,3301 Guess Road,3301 Guess Rd,c(-78.93014, 36.038043),c(-78.930127, 36.038048),1.29438542300781
+"match",lakeland street mini mart,lakeland mini mart,180,58,614 Lakeland Street,614 LAKELAND STREET,c(-78.8897152, 35.9767985),c(-78.889714, 35.976806),0.84092501275128
+"match",lasalle street family fare,family fare,181,33,412 Lasalle Street,412 SOUTH LASALLE STREET,c(-78.948496, 36.013379),c(-78.948515, 36.013374),1.79709106144628
+"match",metro 8,hunky dory,202,139,746 Ninth Street,718 9TH ST,c(-78.9220689, 36.0093846),c(-78.921976, 36.008485),100.379529603429
+"match",patron mexican grill,lagos meat market,230,129,3438 Hillsborough Road Suite F,3438 HILLSBOROUGH ROAD SUITE C,c(-78.9468179, 36.020183),c(-78.946822, 36.020192),1.06652654861019
+"match",r and m mini mart,r and m mini mart,243,73,1912 South Alston Avenue,1912 SOUTH ALSTON AVENUE,c(-78.8892089, 35.963919),c(-78.889215, 35.963921),0.592332259879545
+"match",shop n go food mart,shop & go food mart,271,80,4640 Hillsborough Road,4640 Hillsborough Rd,c(-78.981084, 36.033166),c(-78.981087, 36.033178),1.36133696913097
+"match",speedway 6972,speedway,282,82,1400 Miami Blvd,1400 MIAMI BOULEVARD,c(-78.8418243, 35.9560013),c(-78.841721, 35.955961),10.3214412041043
+"match",u c stop,uc stop,306,95,710 South Alston Avenue,710 SOUTH ALSTON AVENUE,c(-78.8919669, 35.979871),c(-78.891966, 35.979876),0.561842585830659

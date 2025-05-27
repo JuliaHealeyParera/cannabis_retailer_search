@@ -33,7 +33,7 @@ alcohol_shp = alcohol_shp |>
          latitude = latitud)
 
 tobacco_sf = st_as_sf(tobacco_tbl, coords = c("longitude", "latitude"), remove = FALSE) |> 
-  st_set_crs("wgs84")
+  st_set_crs("wgs84") |> st_transform('NAD83')
 alcohol_sf = st_as_sf(alcohol_shp, coords = c("longitude", "latitude"), remove = FALSE) |> 
   st_transform(st_crs(tobacco_sf))
 
@@ -41,8 +41,6 @@ col_names <- c('retailer_name', 'corp_nm', 'address', 'city', 'n_prms_',
                'n_lcnss', 'prmt_ty', 'zip', 'hours', 'phone', 'geometry', 
                'source', 'store_type', 'unit_type', 'unit_number', 'accuracy_score', 
                'accuracy_type', 'geometry', 'longitude', 'latitude')
-
-abc_sf = alcohol_sf |> st_transform(st_crs(tobacco_sf)) |> filter(grepl('ABC', corp_nm)) 
 
 combined_sf <- rbind(alcohol_sf |> select(all_of(col_names)), 
                      tobacco_sf |> select(all_of(col_names))) 
@@ -110,3 +108,49 @@ check_matches <- function(city_name, dist_lim) {
 subsetted_durham_matches <- write.csv(comb_df, 'process/JHP_scratchpad_process/sub_durham_matches.csv')
 
 durham_matches <- check_matches("durham", 1000)
+
+#Second Iteration####
+durham_buff_alc <- alcohol_sf |> 
+  filter(city == "durham") |>
+  mutate(buffers = st_buffer(geometry, dist = 500), 
+         row = row_number())
+
+durham_pt_tob <- tobacco_sf |>
+  filter(city == "durham") |>
+  mutate(row = row_number()) 
+
+#Is one object within the buffer of another?
+is_match <- function(buffer, point, id) {
+  obj <- st_within(point, buffer)[[1]]
+  if (length(obj) == 0) {
+    return(NA_character_)
+  } else if (obj == 1) {
+    return(id)
+  } else {
+    return(NA_character_)
+  }
+}
+
+#List of all matches found in the tobacco dataset for a given buffer
+#Function later mapped across larger dataset 
+matches_list <- function(buffer) {
+  buf_tob <- durham_pt_tob |>
+    mutate(is_match = pmap(list(geometry, row), ~ is_match(buffer, ..1, ..2)))
+  
+  matches <- buf_tob |> filter(is_match != "NA") |> pull(row)
+  matches_vec <- unlist(str_split(as.character(matches), ' '))
+
+  return(matches_vec)
+}
+
+durham_duplicates_alc <- durham_buff_alc |> 
+  mutate(matches = map(buffers, matches_list)) |> 
+  unnest_longer(matches)
+
+#To be further cleaned: dataset with one row being one possible duplicate pair
+#Multiple rows for certain alcohol outlets (if multiple possible duplicates)
+#Possible multiple rows for certain toabcco outlets (if in the buffers of multiple alcohol outlets)
+duplicates_joined <- durham_duplicates_alc |>
+  mutate(matches = as.integer(matches)) |>
+  left_join(durham_pt_tob, by = join_by(matches == row))
+  

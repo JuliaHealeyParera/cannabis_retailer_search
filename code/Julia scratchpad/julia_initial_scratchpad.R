@@ -153,4 +153,29 @@ durham_duplicates_alc <- durham_buff_alc |>
 duplicates_joined <- durham_duplicates_alc |>
   mutate(matches = as.integer(matches)) |>
   left_join(durham_pt_tob, by = join_by(matches == row))
+
+duplicates_joined <- duplicates_joined |>
+  mutate(dist = pmap(list(geometry.x, geometry.y), ~ as.numeric(st_distance(..1, ..2)))) |>
+  unnest(dist)
+
+r_samp <- sample_n(duplicates_joined, 100)
+r_samp <- r_samp |> select(dist, geometry.x, geometry.y, retailer_name.y, retailer_name.x, address.x, address.y)
+write.csv(r_samp, 'process/JHP_scratchpad_process/manual_samples.csv')
+annotated <- read_csv('process/JHP_scratchpad_process/manual_samples_annotated.csv')
+#Return to dist cutoff later, for now 
+
+annotated <- annotated |>
+  mutate(name_dist = pmap(list(address.x, address.y), ~ adist(..1, ..2))) |>
+  unnest(name_dist)
+
+dist_sum <- annotated |>
+  mutate(name_dist = as.integer(name_dist)) |>
+  pivot_longer(cols = c(dist, name_dist), 
+               names_to = "dist_type", 
+               values_to = "distance") |>
+  group_by(duplicate, dist_type) |>
+  summarize(mean = mean(distance), 
+            median = median(distance),
+            min = min(distance), 
+            max = max(distance))
   

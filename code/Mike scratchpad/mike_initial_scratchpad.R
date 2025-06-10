@@ -4,6 +4,7 @@ library(readxl)
 library(janitor)
 library(tidycensus)
 library(ggrepel)
+library(tictoc)
 
 # TODO Should probably pull down NC county map from tidycensus here
 # Get NC map from US census ####
@@ -42,7 +43,7 @@ alcohol_sf
 
 alcohol_sf |> filter(corp_nm |> str_detect("ABC")) # Quick look
 
-# Flatten into single dataset
+# Flatten into single dataset ####
 alcohol_sf |> str(); tobacco_sf |> str()
 retail_sf = bind_rows(alcohol_sf |> 
                         select(store_name = trad_nm, store_address = address, store_type = prmt_ty) |> 
@@ -50,9 +51,9 @@ retail_sf = bind_rows(alcohol_sf |>
                       tobacco_sf |> 
                         select(store_name = retailer_name, store_address = street_address, store_type = store_type) |> 
                         mutate(source = "Tobacco"))
-retail_sf
+retail_sf = retail_sf |> mutate(common_id = 1:n())
 
-# Skim for difficulty ####
+# Maps - Skim for difficulty ####
 ## Big map ####
 ggplot()+
   geom_sf(data = nc_county_sf)+
@@ -67,8 +68,6 @@ ggplot()+
   facet_wrap(~source)+
   labs(title = "Quick map: tobacco and alcohol")+
   theme_void()
-
-
 
 ## Zoom map 1: Orange and Durham ####
 focus_area_sf = nc_county_sf |> filter(NAME |> str_detect("Orange|Durham"))
@@ -128,3 +127,28 @@ ggsave("process/MDF scratchpad process/UNC zoom - tobacco and alcohol retailers,
 # Spatial buffer ####
 # hold = alcohol_sf |> st_intersection(tobacco_sf) # need to buffer. 
 # TODO Should really transform to more user friendly CRS, state plane
+
+
+# Testing & timing some distance calculations ####
+n_time_test = 1000
+
+tic("test some distance comparison")
+hold = st_distance(tobacco_sf |> slice_head(n=n_time_test), tobacco_sf |> slice_head(n=n_time_test)) 
+toc() # 1.2s for 1000, 80s for 10,000. n^2
+# Could attempt to optimize by a list of distances to just the nearest (buffer defined) places. May not be worth the optimization.
+
+tic("Name distance")
+hold = adist(tobacco_sf[1:n_time_test,]$retailer_name, tobacco_sf[1:n_time_test,]$retailer_name)
+toc() # 1.2s for 1000, 118 for 10,000.
+# Calculating all name distances is probably the bigger inefficiency here. May be valuable to only calculate name distances for spatially proximate retailers
+
+tic("Address string distance")
+hold = adist(tobacco_sf[1:n_time_test,]$street_address, tobacco_sf[1:n_time_test,]$street_address)
+toc() # 1.7s for 1000, 184s for 10,000.
+
+# create spatial buffer
+retail_sf |> st_buffer(dist = 500)
+
+
+
+

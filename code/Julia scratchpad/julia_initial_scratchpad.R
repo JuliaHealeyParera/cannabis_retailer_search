@@ -10,13 +10,13 @@ alcohol_shp = st_read("ignore/data/alcohol retailers/study_outlets.shp")
 
 tobacco_tbl = tobacco_tbl |> clean_names() |> 
   mutate(source = "Tobacco", 
-         corp_nm = NA,
-         n_prms_ = NA, 
+         corp_nm = NA, #MDF A note - if you bind_rows() instead of rbind() you don't need...
+         n_prms_ = NA, # to generate empty columns. They're NA by default. 
          n_lcnss = NA,
          prmt_ty = NA,
          hours = NA,
          phone = NA, 
-         city = str_to_lower(city),
+         city = str_to_lower(city), # MDF Nice. Title case might also work (but: McDowell County!)
          retailer_name = str_to_lower(retailer_name)) |>
   rename(address = street_address)
 alcohol_shp = alcohol_shp |> 
@@ -33,9 +33,13 @@ alcohol_shp = alcohol_shp |>
          latitude = latitud)
 
 tobacco_sf = st_as_sf(tobacco_tbl, coords = c("longitude", "latitude"), remove = FALSE) |> 
-  st_set_crs("wgs84") |> st_transform('NAD83')
+  st_set_crs("wgs84") |> st_transform('NAD83') 
 alcohol_sf = st_as_sf(alcohol_shp, coords = c("longitude", "latitude"), remove = FALSE) |> 
   st_transform(st_crs(tobacco_sf))
+# MDF Interesting that you can send to NAD83 without specifying the specific (e.g. NC) reference. 
+# I wonder what exact plane this transformation is doing.
+# Another hint - you can tweak the projection to use miles instead of meters. I have some 
+# memory of using the units package for that. I'll want to remember / rediscover how I used to do that.
 
 col_names <- c('retailer_name', 'corp_nm', 'address', 'city', 'n_prms_', 
                'n_lcnss', 'prmt_ty', 'zip', 'hours', 'phone', 'geometry', 
@@ -44,6 +48,7 @@ col_names <- c('retailer_name', 'corp_nm', 'address', 'city', 'n_prms_',
 
 combined_sf <- rbind(alcohol_sf |> select(all_of(col_names)), 
                      tobacco_sf |> select(all_of(col_names))) 
+# MDF Ah, are you rbind'ing becuase they're sfs? I'm curious about this approach.
   
 ggplot(combined_sf |> #Durham zoom over clustering of points for case-by-case analysis
          filter(city == "durham" & longitude > -79 & longitude < -78.8 & latitude > 35.7 & latitude < 36.2), 
@@ -75,7 +80,13 @@ check_matches <- function(city_name, dist_lim) {
                                      longitude < -78.8, longitude > -79)
     #filter(city == city_name)
   
-  for (a in 1:nrow(durham_alc)) {
+  # MDF Interesting approach! Suggestion: stew on how you might use purrr to do this without 
+  # explicit iteration. Also: you're still doing a great job using traditional C/java/etc.
+  # iteration. The "iteration" chapter in Advanced R might be a good read for you at this point
+  # now that you're getting even stronger in R
+  # Check out chapter 9: https://adv-r.hadley.nz/functionals.html and catch Hadley's comment
+  # in the loops chapter about "generally you shouldn't really need to use these"
+  for (a in 1:nrow(durham_alc)) { 
     print(a)
     for (t in 1:nrow(durham_tob)) {
       dist = unclass(st_distance(durham_alc[a, ]['geometry'], durham_tob[t, ]['geometry']))
@@ -106,6 +117,7 @@ check_matches <- function(city_name, dist_lim) {
 }
 
 subsetted_durham_matches <- write.csv(comb_df, 'process/JHP_scratchpad_process/sub_durham_matches.csv')
+# MDF Suggest write_csv over write.csv
 
 durham_matches <- check_matches("durham", 1000)
 
@@ -130,6 +142,11 @@ is_match <- function(buffer, point, id) {
     return(NA_character_)
   }
 }
+# MDF ^ Interesting! You're getting really good at this, enough that we can take some
+# more advanced approaches. Also, and I'm unclear - do you want within? touches? etc. 
+# Are you already familiar with the DE9IM verbs / grammar? If so, cool, we'll use it. 
+# If not, worth a skim
+# https://en.wikipedia.org/wiki/DE-9IM
 
 #List of all matches found in the tobacco dataset for a given buffer
 #Function later mapped across larger dataset 
@@ -142,6 +159,15 @@ matches_list <- function(buffer) {
 
   return(matches_vec)
 }
+# MDF I THINK this is where the advanced R purrr / tibble / rectangular data approach
+# might come in. Have you made it to Hadley's nested tibble demo yet? I return to it 
+# often, though there are better ones. I'm not QUITE as good as I'd like to be dancing
+# between sf and nested tibbles, but I want to keep improving. Rectangular approaches
+# have a lot of benefits for simpler code, parallelization, etc. Lemme see if I can find the video
+# https://www.youtube.com/watch?v=rz3_FDVt9eg 
+# https://jennybc.github.io/purrr-tutorial/
+# https://www.youtube.com/watch?v=HwRrEIPiTyk
+# HIGH LEVEL BUT I HIGHLY RECOMMEND ^^ 
 
 durham_duplicates_alc <- durham_buff_alc |> 
   mutate(matches = map(buffers, matches_list)) |> 
@@ -163,6 +189,7 @@ r_samp <- r_samp |> select(dist, geometry.x, geometry.y, retailer_name.y, retail
 write.csv(r_samp, 'process/JHP_scratchpad_process/manual_samples.csv')
 annotated <- read_csv('process/JHP_scratchpad_process/manual_samples_annotated.csv')
 #Return to dist cutoff later, for now 
+# MDF Let's talk about these data structures!!
 
 annotated <- annotated |>
   mutate(name_dist = pmap(list(address.x, address.y), ~ adist(..1, ..2))) |>

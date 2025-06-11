@@ -73,17 +73,16 @@ get_store_name_distance = function(a, b){
   adist(get_root_store_name(a), get_root_store_name(b))
 }
 
-get_neighbor_info = function(this_sf, all_sf, buffer_radius = 0.25){
+# TODO  give this one a list and subset
+get_neighbor_info = function(this_id, these_ind, all_sf, buffer_radius = 0.25){
   # TODO remove self from neighbor list? Perhaps by ID. Or by distance = 0
   # TODO be smart about NULL assignment. return an empty tbl/sf, for instance?
   # TODO expects to set buffer radius in a certain units. Not ideal. Better to have explicit units.
+  neighbors_to_return = all_sf[these_ind |> unlist(),]
   
-  # Calc spatial distance
-  neighbors_to_return = all_sf[st_buffer(this_sf, dist = buffer_radius * 5280),] # unsafe, need units()
-  # neighbors_to_return = all_sf[this_sf |> st_buffer(dist = set_units(buffer_radius, "miles")),]
   neighbors_to_return$dist_geo = st_distance(neighbors_to_return, 
-                                             neighbors_to_return[1,]) |> 
-    units::set_units("miles") # ensure we're returning miles for interpretability
+                                             neighbors_to_return |> filter(common_id == this_id)) |> 
+    units::set_units("miles") |> c() # ensure we're returning miles for interpretability
   
   
   # Calc store name distance
@@ -107,28 +106,42 @@ get_neighbor_info = function(this_sf, all_sf, buffer_radius = 0.25){
   return(neighbors_to_return)
 }
 #^  bad habit, overloading function. 
-# But efficient-ish. root_store_name, address name easier to do once
+-# But efficient-ish. root_store_name, address name easier to do once
 # TODO Intersting opportunity - what about KEEPING the first element of the list as 
 # its self-reference and deduping - or not - what's inside? BUT AHHH now we hit the chain issue
 # could rewrite the buffer approach to merge, then compare inside each cluster and collapse.
 
 # retail_sf[retail_sf$geometry[1] |> st_buffer(0.5*5280),] # pre-function demo
-get_neighbor_info(retail_sf$geometry[3], retail_sf, .25) # post function test
-retail_sf$geometry[3] |> st_crs() # the map() is stripping the crs from geometries. array_branch?
-retail_sf$geometry[[3]] |> st_crs()
+# get_neighbor_info(retail_sf$geometry[[3]], retail_sf, .25) # post function test
+#retail_sf$geometry[3] |> st_crs() # the map() is stripping the crs from geometries. array_branch?
+# retail_sf$geometry[[3]] |> st_crs()
 
-n_slice = 20 # n_slice = Inf
+# retail_sf |> group_by(common_id) |> group_split()
+
+# Temporarily do this outside of the pipe. I don't love this.
+
+# Distance Matrix ####
+# TODO Don't love this approach but much faster
+tic("get distance matrix")
+n_slice = 500 #Inf
+neighbor_nested_sf = retail_sf |> group_by(source) |> slice_head(n = n_slice) |> ungroup() 
+dist_m = st_distance(neighbor_nested_sf, neighbor_nested_sf) |> set_units("miles")
+dist_m[1:5, 1:5]
+toc()
+closeenough_m = dist_m < set_units(0.1, "miles")
+neighbor_list = closeenough_m |> apply(1, which, simplify = F) # TODO SURELY a better way to do this. Faster than buffers
+neighbor_list[1:5]
+neighbor_nested_sf = neighbor_nested_sf |> mutate(neighbor_ind = neighbor_list)
+
+get_neighbor_info(3, neighbor_nested_sf$neighbor_ind[3], neighbor_nested_sf, .25) # post function test
+
 tic(paste0("tagging ", n_slice, " (x2) retailers for neighbors and dups"))
-neighbor_nested_sf = retail_sf |> as_tibble() |> # Tibble promotion for nesting
-  group_by(source) |> slice_head(n = n_slice) |> ungroup() |> # Comment for Testing. 100 in 12s -> 1000 in 2m
-  mutate(neighbor_sf = map(geometry, get_neighbor_info, all_sf = retail_sf)) 
+neighbor_nested_sf = neighbor_nested_sf|> # Comment for Testing. 100 in 12s -> 1000 in 2m
+  mutate(neighbor_sf = map2(common_id, neighbor_list, get_neighbor_info, all_sf = neighbor_nested_sf)) 
+toc() # 10s for 500+500=1000 retailers. x30 = 5min estimated
+  
 #^ ooh, don't like this (repeating retail_sf object name). |> _ placeholder is weird - Julia?
-toc(log = T)
-tic.log()
 # TODO write tic log tic.log()
-tic.clearlog()
-neighbor_nested_sf
-neighbor_nested_sf$neighbor_sf[1]
 
 # Shrink to dups only
 keep_duplicate_places = function(this_tbl){
@@ -187,3 +200,20 @@ neighbor_nested_sf |>
 # 4) Easy way to transform units of crs into miles for easier spatial math interpretation? 
 # Will still have to send back when mapping with common base layers in ft/m units
 # retransform CRS 
+
+
+# CODE BANK
+# this_sf = st_sf(tibble(id=1), crs = 2264, geometry = this_sf |> st_sfc()) # map over geometry is really frustating
+# Calc spatial distance - buffer is SO slow.
+# neighbors_to_return = all_sf[(st_distance(all_sf, this_sf)) < set_units(buffer_radius, "miles"),]
+# neighbors_to_return = all_sf[st_buffer(this_sf, dist = buffer_radius * 5280),] # unsafe, need units()
+# neighbors_to_return = all_sf[this_sf |> st_buffer(dist = set_units(buffer_radius, "miles")),]
+
+
+
+# neighbor_nested_sf  = neighbor_nested_sf |> 
+#   mutate(neighbor_sf = st_geometry(neighbor_nested_sf) |> map(get_neighbor_info, all_sf = retail_sf)) 
+
+
+#   group_by(source) |> slice_head(n = n_slice) |> ungroup() |> # Comment for Testing. 100 in 12s -> 1000 in 2m
+# mutate(neighbor_sf = geometry |> map(get_neighbor_info, all_sf = retail_sf)) 

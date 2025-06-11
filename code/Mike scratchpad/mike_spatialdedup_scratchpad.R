@@ -7,19 +7,18 @@ library(sf)
 library(readxl)
 library(janitor)
 library(tidycensus)
+options(tigris_use_cache = T)
 library(ggrepel)
 library(tictoc)
 library(units)
 library(eulerr)
 
 
-# TODO Should probably pull down NC county map from tidycensus here
 # Get NC map from US census ####
 # load_variables("acs5", year = 2020)
-options(tigris_use_cache = T)
 nc_county_sf = tidycensus::get_acs(geography = "county", state = "NC", year = 2020, variables = c("total_pop" = "B01001A_001"), geometry = T) 
 nc_county_sf = nc_county_sf |> st_transform("wgs84")
-nc_county_sf |> st_geometry() |> plot()
+# nc_county_sf |> st_geometry() |> plot() #  Confirmatory map
 
 # Test search ####
 ## (TODO) Read cannabis table ####
@@ -123,11 +122,11 @@ get_neighbor_info = function(this_id, these_ind, all_sf, buffer_radius = 0.25){
 # Distance Matrix ####
 # TODO Don't love this approach but much faster
 tic("get distance matrix")
-n_slice = 500 #Inf
+n_slice = Inf #n_slice = 500 #Inf
 neighbor_nested_sf = retail_sf |> group_by(source) |> slice_head(n = n_slice) |> ungroup() 
 dist_m = st_distance(neighbor_nested_sf, neighbor_nested_sf) |> set_units("miles")
-dist_m[1:5, 1:5]
-toc()
+dist_m |> dim(); dist_m[1:5, 1:5]
+toc() # 45 seconds for full distance matrix
 closeenough_m = dist_m < set_units(0.1, "miles")
 neighbor_list = closeenough_m |> apply(1, which, simplify = F) # TODO SURELY a better way to do this. Faster than buffers
 neighbor_list[1:5]
@@ -138,8 +137,8 @@ get_neighbor_info(3, neighbor_nested_sf$neighbor_ind[3], neighbor_nested_sf, .25
 tic(paste0("tagging ", n_slice, " (x2) retailers for neighbors and dups"))
 neighbor_nested_sf = neighbor_nested_sf|> # Comment for Testing. 100 in 12s -> 1000 in 2m
   mutate(neighbor_sf = map2(common_id, neighbor_list, get_neighbor_info, all_sf = neighbor_nested_sf)) 
-toc() # 10s for 500+500=1000 retailers. x30 = 5min estimated
-  
+toc() # 10s for 500+500=1000 retailers. x30 = 5min estimated. Actual: about 20 minutes / 1400s
+140 / 6  
 #^ ooh, don't like this (repeating retail_sf object name). |> _ placeholder is weird - Julia?
 # TODO write tic log tic.log()
 
@@ -183,7 +182,9 @@ set_list = list(tobacco = unique_nested_sf |> filter(source_list |> str_detect("
 set_list |> euler() |> plot(quantities = T)
 set_list |> venn() |> plot()
 
-
+# png(filename = "process/MDF scratchpad process/venn_diagram.png")
+# set_list |> euler() |> plot(quantities = T)
+# dev.off()
 
 ## TEST: rename and unnest ####
 neighbor_nested_sf |> 

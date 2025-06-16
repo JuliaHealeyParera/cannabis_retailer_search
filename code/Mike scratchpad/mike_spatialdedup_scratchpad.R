@@ -63,6 +63,7 @@ retail_sf |> st_crs()
 # I can't rememeber the nice way to transform units to miles
 # could hand edit the wkt / proj4string
 # REF: https://spatialreference.org/ref/?search=north+carolina
+## JHP: 2264 unit is feet -- why not just use 1 mile / 5280 feet conversion?
 
 
 get_root_name = function(a){
@@ -70,6 +71,7 @@ get_root_name = function(a){
 } 
 # may want to remove po box, etc. This could be more robust for str comparisons
 
+## JHP: Why is this function not get_root_name()? get_root_store_name() not defined 
 get_store_name_distance = function(a, b){
   adist(get_root_store_name(a), get_root_store_name(b))
 }
@@ -79,7 +81,14 @@ get_neighbor_info = function(this_id, these_ind, all_sf, buffer_radius = 0.25){
   # TODO remove self from neighbor list? Perhaps by ID. Or by distance = 0
   # TODO be smart about NULL assignment. return an empty tbl/sf, for instance?
   # TODO expects to set buffer radius in a certain units. Not ideal. Better to have explicit units.
-  neighbors_to_return = all_sf[these_ind |> unlist(),]
+  ## JHP: Isn't this okay, since you set explicit units later on?
+  ## Supposedly, st_buffer can easily be in miles: st_buffer(point_sf, dist = units::set_units(1, "mile"))
+  neighbors_to_return = all_sf[these_ind |> unlist(),] 
+  
+  ## JHP to TODO: to subset and remove self: 
+  # neighbors_to_return = all_sf[these_ind |> unlist(), ] |> filter(common_id != this_id)
+  # OR if can easily pass in this_ind for comparison index: 
+  # neighbors_to_retun = all_sf[these_ind[!(these_ind %in% this_ind)], ]
   
   neighbors_to_return$dist_geo = st_distance(neighbors_to_return, 
                                              neighbors_to_return |> filter(common_id == this_id)) |> 
@@ -102,8 +111,12 @@ get_neighbor_info = function(this_id, these_ind, all_sf, buffer_radius = 0.25){
     mutate(is_same_outlet = case_when(dist_geo < set_units(0.05, "miles") & dist_address < 5 & dist_name < 7 ~ T,
                                       dist_geo < set_units(0.1, "miles") & dist_address < 2 & dist_name < 2 ~ T,
                                       T ~ F))
+  ## JHP: Additional helper function to be more cautious of same building, different suites: 
+  ## under the assumption that suites would be appropriately labeled (given that
+  ## significant attention is needed for them to be labeled at all), create binary 
+  ## YES/NO st_detect("suite") and set as TRUE/FALSE for whether suites are followed by same letter
+  ## Edge case detection, but important edge case. 
   
-    
   return(neighbors_to_return)
 }
 #^  bad habit, overloading function. 
@@ -124,11 +137,11 @@ get_neighbor_info = function(this_id, these_ind, all_sf, buffer_radius = 0.25){
 # Distance Matrix ####
 # TODO Don't love this approach but much faster
 tic("get distance matrix")
-n_slice = Inf #n_slice = 500 #Inf
+n_slice = 500 #n_slice = 500 #Inf
 neighbor_nested_sf = retail_sf |> group_by(source) |> slice_head(n = n_slice) |> ungroup() 
 dist_m = st_distance(neighbor_nested_sf, neighbor_nested_sf) |> set_units("miles")
 dist_m |> dim(); dist_m[1:5, 1:5]
-toc() # 45 seconds for full distance matrix
+toc() # 45 seconds for full distance matrix ## JHP: 531.75 for me, fyi
 closeenough_m = dist_m < set_units(0.1, "miles")
 neighbor_list = closeenough_m |> apply(1, which, simplify = F) # TODO SURELY a better way to do this. Faster than buffers
 neighbor_list[1:5]
@@ -198,6 +211,7 @@ neighbor_nested_sf |>
 # 1) NB placeholder issues w/ native pipe 
 # https://stackoverflow.com/questions/67633022/what-are-the-differences-between-rs-native-pipe-and-the-magrittr-pipe
 # 2) Best way to do spatial subset a[b, ] using tidyverse and st_ functions? filter --> st_whatever?
+## JHP: why not a |> filter(ind_a %in% ind_b) or other relevant variables?
 # 3) we're quickly going to get into chain link problems. May need to establish merged buffer clusters
 #  and dedup within that
 # 4) Easy way to transform units of crs into miles for easier spatial math interpretation? 

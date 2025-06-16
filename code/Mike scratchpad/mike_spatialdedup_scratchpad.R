@@ -18,6 +18,7 @@ library(eulerr)
 # load_variables("acs5", year = 2020)
 nc_county_sf = tidycensus::get_acs(geography = "county", state = "NC", year = 2020, variables = c("total_pop" = "B01001A_001"), geometry = T) 
 nc_county_sf = nc_county_sf |> st_transform("wgs84")
+orange_sf = nc_county_sf |> filter(NAME |> str_detect("Orange"))
 # nc_county_sf |> st_geometry() |> plot() #  Confirmatory map
 
 # Test search ####
@@ -54,6 +55,7 @@ retail_sf = bind_rows(
   arrange(source, store_name) |> 
   mutate(common_id = 1:n()) |> 
   mutate(across(c(store_name, store_address), str_to_title))
+retail_sf |> count(source)
 
 # Transform to NC state plane #### 
 retail_sf = retail_sf |> st_transform(2264)
